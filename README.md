@@ -223,7 +223,7 @@ url = "https://example.com/feed.xml"
 
 - 🔥 Redditで話題になっている最新の技術トピック
 - 📈 GitHub上で人気急上昇中のプロジェクト
-- 📰 Hacker Newsの注目記事と議論
+- 📰 Hacker Newsの注目記事
 - 📚 最新のAI研究論文と主要な発見
 - 🌐 更新されたブログ記事
 
