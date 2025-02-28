@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="400" height="160" viewBox="0 0 400 160" xmlns="http://www.w3.org/2000/svg">
+  <!-- グラデーションとフィルター定義 -->
+  <defs>
+    <linearGradient id="techGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#673ab7" />
+      <stop offset="50%" stop-color="#3f51b5" />
+      <stop offset="100%" stop-color="#2196f3" />
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feFlood flood-color="#2196f3" flood-opacity="0.5" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glowBlur"/>
+      <feComposite in="SourceGraphic" in2="glowBlur" operator="over"/>
+    </filter>
+    <filter id="outerGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feFlood flood-color="#3f51b5" flood-opacity="0.3" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glowBlur"/>
+      <feComposite in="SourceGraphic" in2="glowBlur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- 外側の装飾要素（完全に表示） -->
+  <ellipse cx="200" cy="80" rx="180" ry="70" fill="none" stroke="#673ab7" stroke-width="1" stroke-dasharray="6,4" opacity="0.3"/>
+
+  <!-- 背景の六角形（知識の六角形セル）- 中央に配置 -->
+  <polygon points="100,40 300,40 325,80 300,120 100,120 75,80" fill="#fafafa" stroke="url(#techGradient)" stroke-width="3" filter="url(#outerGlow)"/>
+
+  <!-- データフロー要素 -->
+  <path d="M110,80 L140,80" stroke="#2196f3" stroke-width="2" stroke-dasharray="3,2"/>
+  <path d="M140,80 L170,80" stroke="#3f51b5" stroke-width="2" stroke-dasharray="3,2"/>
+  <path d="M230,80 L260,80" stroke="#673ab7" stroke-width="2" stroke-dasharray="3,2"/>
+  <path d="M260,80 L290,80" stroke="#2196f3" stroke-width="2" stroke-dasharray="3,2"/>
+
+  <!-- 文字 -->
+  <text x="200" y="90" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#212121" filter="url(#neonGlow)">Nook</text>
+
+  <!-- AIノード -->
+  <circle cx="110" cy="80" r="10" fill="#673ab7" />
+  <circle cx="140" cy="80" r="6" fill="#3f51b5" />
+  <circle cx="170" cy="80" r="4" fill="#2196f3" />
+
+  <circle cx="230" cy="80" r="4" fill="#2196f3" />
+  <circle cx="260" cy="80" r="6" fill="#3f51b5" />
+  <circle cx="290" cy="80" r="10" fill="#673ab7" />
+
+  <!-- 本のアイコン（未来志向） -->
+  <rect x="80" y="70" width="12" height="20" rx="2" ry="2" fill="#673ab7" opacity="0.7" />
+  <rect x="310" y="70" width="12" height="20" rx="2" ry="2" fill="#2196f3" opacity="0.7" />
+
+  <!-- AI要素 -->
+  <circle cx="95" cy="55" r="8" fill="#ff5722" />
+  <path d="M95 50 L95 60 M90 55 L100 55" stroke="white" stroke-width="2" stroke-linecap="round" />
+
+  <!-- 追加の接続線 -->
+  <path d="M80,80 C100,30 300,30 320,80 C300,130 100,130 80,80" stroke="url(#techGradient)" stroke-width="1" fill="none" stroke-dasharray="3,3" opacity="0.3"/>
+</svg>
