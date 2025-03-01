@@ -67,7 +67,7 @@ Reddit、Hacker News、GitHub Trending、技術ブログ、学術論文など多
   - 先に`aws configure`でシークレットなどの認証情報を登録する必要があります。
 - Python 3.11 以上
 - 以下のAPIキー:
-  - Google Gemini API キー
+  - Google Gemini API キー（有償）
   - Reddit API キー（クライアントID、クライアントシークレット）
 
 </details>
