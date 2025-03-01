@@ -63,6 +63,8 @@ Reddit、Hacker News、GitHub Trending、技術ブログ、学術論文など多
 <summary>必要なツール（クリックして展開）</summary>
 
 - AWS CLI と AWS CDK
+  - CDKでのデプロイには強めの権限が必要です。
+  - 先に`aws configure`でシークレットなどの認証情報を登録する必要があります。
 - Python 3.11 以上
 - 以下のAPIキー:
   - Google Gemini API キー
