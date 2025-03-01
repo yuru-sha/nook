@@ -37,7 +37,7 @@ Reddit、Hacker News、GitHub Trending、技術ブログ、学術論文など多
 ## ✨ 特徴
 
 ### 🔄 多様な情報源からの自動収集・要約
-- **Hacker News**: Hacker Newsから最新のテクノロジーニュースと議論を収集
+- **Hacker News**: Hacker Newsから最新のテクノロジーニュースを収集
 - **GitHub Trending**: GitHubで各言語ごとの人気リポジトリを取得
 - **Reddit**: r/MachineLearningなどのサブレディットから人気投稿を収集して要約
 - **RSS**: RSSフィードを監視し、更新があれば取得して要約
