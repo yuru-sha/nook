@@ -87,7 +87,14 @@ class TechFeed:
                 print(f"date_ is None: {entry.link}")
                 print(entry)
                 continue
-            published_dt = datetime.fromtimestamp(time.mktime(date_))
+            try:
+                published_dt = datetime.fromtimestamp(time.mktime(date_))
+            except Exception as e:
+                print(f"Error converting date: {e}")
+                traceback.print_exc()
+                print(f"entry: {entry.link}")
+                print(entry)
+                continue
             if published_dt > self._threshold:
                 filtered_entries.append(entry)
         return filtered_entries
