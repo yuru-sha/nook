@@ -82,8 +82,10 @@ class TechFeed:
     ) -> list[dict[str, Any]]:
         filtered_entries = []
         for entry in feed_parser["entries"]:
-            date_ = entry.get("date_parsed")
+            date_ = entry.get("date_parsed") or entry.get("published_parsed")
             if not date_:
+                print(f"date_ is None: {entry.link}")
+                print(entry)
                 continue
             published_dt = datetime.fromtimestamp(time.mktime(date_))
             if published_dt > self._threshold:
