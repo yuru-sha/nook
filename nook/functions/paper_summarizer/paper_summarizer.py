@@ -108,7 +108,7 @@ class PaperSummarizer:
         new_arxiv_ids = self._remove_duplicates(new_arxiv_ids)
         print(f"The number of new arXiv IDs: {len(new_arxiv_ids)}")
         markdowns = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             markdowns = list(
                 tqdm(
                     executor.map(self._process_paper, new_arxiv_ids),

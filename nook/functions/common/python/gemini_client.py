@@ -10,15 +10,18 @@ from typing import Any
 
 from google import genai
 from google.genai import types
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
+from google.genai.errors import ClientError
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class GeminiClientConfig:
     """Configuration for the Gemini client."""
 
     model: str = "gemini-2.0-flash-exp"
-    #model: str = "gemini-2.0-flash"
     temperature: float = 1.0
     top_p: float = 0.95
     top_k: int = 40
@@ -63,7 +66,10 @@ class GeminiClient:
         self._chat = None
 
     @retry(
-        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=15)
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception(lambda e: isinstance(e, ClientError)),  # ClientErrorを条件に
+        before_sleep=lambda retry_state: logger.info(f"Retrying due to {retry_state.outcome.exception()}...")
     )
     def generate_content(
         self,
