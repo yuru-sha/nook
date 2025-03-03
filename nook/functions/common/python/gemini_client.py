@@ -17,7 +17,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 class GeminiClientConfig:
     """Configuration for the Gemini client."""
 
-    model: str = "gemini-2.0-flash"
+    model: str = "gemini-2.0-flash-exp"
+    #model: str = "gemini-2.0-flash"
     temperature: float = 1.0
     top_p: float = 0.95
     top_k: int = 40

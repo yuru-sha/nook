@@ -1,16 +1,12 @@
 import inspect
 import os
-import traceback
 from dataclasses import dataclass
 from datetime import date
-from pprint import pprint
 from typing import Any
 
-import boto3
 import requests
-from botocore.exceptions import ClientError
 from bs4 import BeautifulSoup
-from gemini_client import create_client
+from ..common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
 # {title}
@@ -20,15 +16,11 @@ _MARKDOWN_FORMAT = """
 {url_or_text}
 """
 
-
 class Config:
-    hacker_news_top_stories_url = (
-        "https://hacker-news.firebaseio.com/v0/topstories.json"
-    )
+    hacker_news_top_stories_url = "https://hacker-news.firebaseio.com/v0/topstories.json"
     hacker_news_item_url = "https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
     hacker_news_num_top_stories = 30
     summary_index_s3_key_format = "hacker_news/{date}.md"
-
 
 @dataclass
 class Story:
@@ -37,12 +29,9 @@ class Story:
     url: str | None = None
     text: str | None = None
 
-
 class HackerNewsRetriever:
     def __init__(self):
         self._client = create_client()
-        self._s3 = boto3.client("s3")
-        self._bucket_name = os.environ["BUCKET_NAME"]
 
     def __call__(self) -> None:
         stories = self._get_top_stories()
@@ -50,40 +39,18 @@ class HackerNewsRetriever:
         self._store_summaries(styled_attachments)
 
     def _get_top_stories(self) -> list[Story]:
-        """
-        Gets the top stories from Hacker News and returns.
-
-        1. Get the top stories from Hacker News.
-        2. For each story, get the title and text.
-        3. If the score is less than 20, ignore the story.
-        4. If the story has text, summarize it.
-        5. Return the stories.
-
-        Returns
-        -------
-        list[Story]
-            The list of stories.
-        """
-        # 1. Get the top stories from Hacker News.
-        top_stories = self._get_top_storie_ids()[: Config.hacker_news_num_top_stories]
-
+        top_stories = self._get_top_storie_ids()[:Config.hacker_news_num_top_stories]
         stories = []
         for story_id in top_stories:
-            # 2. For each story, get the title and text.
             story = self._get_story(story_id)
-
-            # 3. If the score is less than 20, ignore the story.
             if story["score"] < 20:
                 continue
-
-            # 4. If the story has text, summarize it.
             summary = None
             if story.get("text"):
                 if 100 < len(story["text"]) < 10000:
                     summary = self._summarize_story(story)
                 else:
                     summary = self._cleanse_text(story["text"])
-
             stories.append(
                 Story(
                     title=story["title"],
@@ -92,8 +59,6 @@ class HackerNewsRetriever:
                     text=story.get("text") if summary is None else summary,
                 )
             )
-
-        # 5. Return the stories.
         return stories
 
     def _summarize_story(self, story: dict[str, str | int]) -> str:
@@ -122,16 +87,13 @@ class HackerNewsRetriever:
     def _store_summaries(self, summaries: list[str]) -> None:
         date_str = date.today().strftime("%Y-%m-%d")
         key = Config.summary_index_s3_key_format.format(date=date_str)
-        content = "\n---\n".join(summaries)
-        try:
-            self._s3.put_object(
-                Bucket=self._bucket_name,
-                Key=key,
-                Body=content,
-            )
-        except ClientError as e:
-            print(f"Error putting object {key} into bucket {self._bucket_name}.")
-            print(e)
+        output_dir = os.environ.get("OUTPUT_DIR", "./output")
+        os.makedirs(output_dir, exist_ok=True)
+        file_path = os.path.join(output_dir, key)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("\n---\n".join(summaries))
+        print(f"Saved summaries to {file_path}")
 
     def _stylize_story(self, story: Story) -> str:
         url_or_text = f"[View Link]({story.url})" if story.url else story.text

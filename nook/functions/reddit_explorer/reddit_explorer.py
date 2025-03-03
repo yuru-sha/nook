@@ -1,15 +1,12 @@
 import inspect
 import os
-import traceback
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
 
-import boto3
 import praw
 import tomllib
-from botocore.exceptions import ClientError
-from gemini_client import create_client
+from ..common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
 # {title}
@@ -23,7 +20,6 @@ _MARKDOWN_FORMAT = """
 {summary}
 """
 
-
 class Config:
     reddit_top_posts_limit = 10
     reddit_top_comments_limit = 3
@@ -31,20 +27,10 @@ class Config:
 
     @classmethod
     def load_subreddits(cls) -> list[str]:
-        """Load subreddits from subreddits.toml file."""
-        subreddits_toml_path = os.path.join(
-            os.path.dirname(__file__), "subreddits.toml"
-        )
+        subreddits_toml_path = os.path.join(os.path.dirname(__file__), "subreddits.toml")
         with open(subreddits_toml_path, "rb") as f:
             subreddits_data = tomllib.load(f)
-
-        # Create a list of subreddit names
-        subreddits = []
-        for subreddit in subreddits_data.get("subreddits", []):
-            subreddits.append(subreddit["name"])
-
-        return subreddits
-
+        return [subreddit["name"] for subreddit in subreddits_data.get("subreddits", [])]
 
 @dataclass
 class RedditPost:
@@ -59,7 +45,6 @@ class RedditPost:
     summary: str = field(init=False)
     thumbnail: str = "self"
 
-
 class RedditExplorer:
     def __init__(self):
         self._reddit = praw.Reddit(
@@ -68,8 +53,6 @@ class RedditExplorer:
             user_agent=os.environ.get("REDDIT_USER_AGENT"),
         )
         self._client = create_client()
-        self._s3 = boto3.client("s3")
-        self._bucket_name = os.environ["BUCKET_NAME"]
         self._subreddits = Config.load_subreddits()
 
     def __call__(self) -> None:
@@ -80,22 +63,18 @@ class RedditExplorer:
                 post.comments = self._retrieve_top_comments_of_post(post.id)
                 post.summary = self._summarize_reddit_post(post)
                 markdowns.append(self._stylize_post(post))
-
         self._store_summaries(markdowns)
 
     def _store_summaries(self, summaries: list[str]) -> None:
         date_str = date.today().strftime("%Y-%m-%d")
         key = Config.summary_index_s3_key_format.format(date=date_str)
-        content = "\n---\n".join(summaries)
-        try:
-            self._s3.put_object(
-                Bucket=self._bucket_name,
-                Key=key,
-                Body=content,
-            )
-        except ClientError as e:
-            print(f"Error putting object {key} into bucket {self._bucket_name}.")
-            print(e)
+        output_dir = os.environ.get("OUTPUT_DIR", "./output")
+        os.makedirs(output_dir, exist_ok=True)
+        file_path = os.path.join(output_dir, key)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("\n---\n".join(summaries))
+        print(f"Saved summaries to {file_path}")
 
     def _retrieve_hot_posts(
         self, subreddit: str, limit: int = None

@@ -2,28 +2,21 @@ import concurrent.futures
 import inspect
 import os
 import re
-import traceback
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from pprint import pprint
 from typing import Any
-
-import arxiv
-import boto3
-import requests
-from botocore.exceptions import ClientError
-from bs4 import BeautifulSoup
-from gemini_client import create_client
 from tqdm import tqdm
 
+import arxiv
+import requests
+from bs4 import BeautifulSoup
+from ..common.python.gemini_client import create_client
 
 class Config:
     hugging_face_api_url_format = "https://huggingface.co/papers?date={date}"
     arxiv_id_regex = r"\d{4}\.\d{5}"
     arxiv_ids_s3_key_format = "paper_summarizer/arxiv_ids-{date}.txt"
     summary_index_s3_key_format = "paper_summarizer/{date}.md"
-
-
 
 def remove_tex_backticks(text: str) -> str:
     r"""
@@ -75,7 +68,6 @@ def remove_outer_singlequotes(text: str) -> str:
     pattern = r"'''(.*)'''"
     return re.sub(pattern, lambda m: m.group(1), text, flags=re.DOTALL)
 
-
 @dataclass
 class PaperInfo:
     title: str
@@ -84,17 +76,8 @@ class PaperInfo:
     contents: str
     summary: str = field(init=False)
 
-
 class PaperIdRetriever:
     def retrieve_from_hugging_face(self) -> list[str]:
-        """
-        Retrieve the arXiv IDs of the papers curated by Hugging Face.
-
-        Returns
-        -------
-        list[str]
-            The list of arXiv IDs, or [] if an error occurred.
-        """
         arxiv_ids = []
         try:
             response = requests.get(
@@ -104,37 +87,27 @@ class PaperIdRetriever:
             )
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
-
             for article in soup.find_all("article"):
                 for a in article.find_all("a"):
                     href = a.get("href")
                     if re.match(rf"^/papers/{Config.arxiv_id_regex}$", href):
                         arxiv_ids.append(href.split("/")[-1])
-
         except requests.exceptions.RequestException as e:
             print(f"Error when retrieving papers from Hugging Face: {e}")
-
         return list(set(arxiv_ids))
-
 
 class PaperSummarizer:
     def __init__(self):
         self._client = create_client()
         self._arxiv = arxiv.Client()
-        self._s3 = boto3.client("s3")
-        self._bucket_name = os.environ["BUCKET_NAME"]
         self._paper_id_retriever = PaperIdRetriever()
-
         self._old_arxiv_ids = self._load_old_arxiv_ids()
 
     def __call__(self) -> None:
         new_arxiv_ids = self._paper_id_retriever.retrieve_from_hugging_face()
         new_arxiv_ids = self._remove_duplicates(new_arxiv_ids)
-
         print(f"The number of new arXiv IDs: {len(new_arxiv_ids)}")
-
         markdowns = []
-        # Process papers concurrently because it takes longer than Lambda's timeout
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             markdowns = list(
                 tqdm(
@@ -143,7 +116,6 @@ class PaperSummarizer:
                     desc="Summarizing papers",
                 )
             )
-
         self._save_arxiv_ids(new_arxiv_ids)
         self._store_summaries(markdowns)
 
@@ -153,25 +125,10 @@ class PaperSummarizer:
         return self._stylize_paper_info(paper_info)
 
     def _retrieve_paper_info(self, id_or_url: str) -> PaperInfo:
-        """
-        Retrive arxiv paper info given its ID and information.
-
-        Parameters
-        ----------
-        id_or_url : str
-            The arXiv paper ID or URL.
-
-        Returns
-        -------
-        PaperInfo
-            The title, abstract, content, and URL of the paper.
-        """
-
         if id_or_url.startswith("https://arxiv.org/"):
             arxiv_id = id_or_url.split("/")[-1]
         else:
             arxiv_id = id_or_url
-
         search = arxiv.Search(id_list=[arxiv_id])
         info = next(self._arxiv.results(search))
         contents = self._extract_body_text(arxiv_id)
@@ -189,7 +146,6 @@ class PaperSummarizer:
             abstract=paper_info.abstract,
             contents=paper_info.contents,
         )
-
         return self._client.generate_content(
             contents=self._contents,
             system_instruction=system_instruction,
@@ -209,56 +165,42 @@ class PaperSummarizer:
         date_str = date.today().strftime("%Y-%m-%d")
         key = Config.summary_index_s3_key_format.format(date=date_str)
         content = "\n\n---\n\n".join(summaries)
-        try:
-            self._s3.put_object(
-                Bucket=self._bucket_name,
-                Key=key,
-                Body=content,
-            )
-        except ClientError as e:
-            print(f"Error putting object {key} into bucket {self._bucket_name}.")
-            print(e)
+        output_dir = os.environ.get("OUTPUT_DIR", "./output")
+        os.makedirs(output_dir, exist_ok=True)
+        file_path = os.path.join(output_dir, key)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"Saved summaries to {file_path}")
 
     def _load_old_arxiv_ids(self) -> list[str]:
         arxiv_ids = []
+        output_dir = os.environ.get("OUTPUT_DIR", "./output")
         for i in range(1, 8):
-            last_n_arxiv_ids_s3_key = Config.arxiv_ids_s3_key_format.format(
-                date=(date.today() - timedelta(days=i)).strftime("%Y-%m-%d")
+            last_n_arxiv_ids_path = os.path.join(
+                output_dir,
+                Config.arxiv_ids_s3_key_format.format(
+                    date=(date.today() - timedelta(days=i)).strftime("%Y-%m-%d")
+                )
             )
             try:
-                response = self._s3.get_object(
-                    Bucket=self._bucket_name,
-                    Key=last_n_arxiv_ids_s3_key,
-                )
-                last_n_arxiv_ids = response["Body"].read().decode("utf-8").splitlines()
-                arxiv_ids.extend(last_n_arxiv_ids)
-            except ClientError as e:
-                print(
-                    f"Error getting object {last_n_arxiv_ids_s3_key} "
-                    f"from bucket {self._bucket_name}. "
-                )
-                print(e)
+                with open(last_n_arxiv_ids_path, "r", encoding="utf-8") as f:
+                    arxiv_ids.extend(f.read().splitlines())
+            except FileNotFoundError:
+                print(f"No previous IDs found at {last_n_arxiv_ids_path}")
                 continue
-
         return arxiv_ids
 
     def _save_arxiv_ids(self, new_arxiv_ids: list[str]) -> None:
-        today_arxiv_ids_s3_key = Config.arxiv_ids_s3_key_format.format(
-            date=date.today().strftime("%Y-%m-%d")
-        )
-        try:
-            arxiv_ids_content = "\n".join(new_arxiv_ids)
-            self._s3.put_object(
-                Bucket=self._bucket_name,
-                Key=today_arxiv_ids_s3_key,
-                Body=arxiv_ids_content,
-            )
-        except ClientError as e:
-            print(
-                f"Error putting object {today_arxiv_ids_s3_key} "
-                f"into bucket {self._bucket_name}."
-            )
-            print(e)
+        date_str = date.today().strftime("%Y-%m-%d")
+        key = Config.arxiv_ids_s3_key_format.format(date=date_str)
+        output_dir = os.environ.get("OUTPUT_DIR", "./output")
+        os.makedirs(output_dir, exist_ok=True)
+        file_path = os.path.join(output_dir, key)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(new_arxiv_ids))
+        print(f"Saved arXiv IDs to {file_path}")
 
     def _is_valid_body_line(self, line: str, min_length: int = 80):
         """本文として妥当な行かを判断するための簡易ヒューリスティック。
