@@ -24,7 +24,7 @@ _MARKDOWN_FORMAT = """
 class Config:
     tech_feed_max_entries_per_day = 10
     summary_index_s3_key_format = "tech_feed/{date}.md"
-    threshold_days = 30
+    threshold_days = 1
 
     @classmethod
     def load_feeds(cls) -> dict[str, str]:
