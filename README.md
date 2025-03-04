@@ -12,6 +12,110 @@
   <img src="assets/screenshots/nook-demo.gif" alt="Nook Demo" width="700">
 </p>
 
+## フォーク版概要
+
+これは[@IMG_5955](https://x.com/IMG_5955)さんが開発したNookからAWS依存部分を無くしてローカルで動かせるようにしたものです。自宅サーバでの運用を想定してます。
+
+## フォーク版導入方法
+
+とりま、Ubuntuで動かす前提での導入方法です。（WSL2でも可）
+
+1. **リポジトリをクローン**
+   ```bash
+   git clone https://github.com/umiyuki/nook.git
+   cd nook
+   ```
+
+2. **環境変数の設定**
+   `.env` ファイルを作成し、以下の内容を設定
+   ```
+   GEMINI_API_KEY=your_gemini_api_key
+   REDDIT_CLIENT_ID=your_reddit_client_id
+   REDDIT_CLIENT_SECRET=your_reddit_client_secret
+   REDDIT_USER_AGENT=your_reddit_user_agent
+   OUTPUT_DIR=/home/yourdirectory/output
+   ```
+
+3. **依存関係のインストール**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Windowsの場合: .venv\Scripts\activate
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
+   ```
+
+4. **データ収集実行**
+   ```bash
+   python main.py
+   ```
+   .envのOUTPUT_DIR以下に収集した情報がmdファイルで保存されます。
+
+5. **ビューワのサーバ起動**
+   ```bash
+   python nook/functions/viewer/viewer.py
+   ```
+   サーバ起動した状態でブラウザからhttp://localhost:8080 にアクセスすると閲覧できます。
+
+6. **データ収集をcronで定期実行**
+   
+   run_nook.sh内のPROJECT_DIRを自分の環境に合わせて編集する
+   
+   run_nook.shに実行権限を付与
+   ```bash
+   chmod +x run_nook.sh
+   ```
+   crontabを編集
+   ```bash
+   crontab -e
+   ```
+   スケジュールを追加(以下の場合、毎日夜0時にデータ収集実行）
+   ```text
+   0 0 * * * /home/yourname/nook/run_nook.sh
+   ```
+
+8. **ビューワのサーバを永続化**
+   
+   run_viewer.sh内のPROJECT_DIRを自分の環境に合わせて編集する
+   
+   run_viewer.shに実行権限を付与
+   ```bash
+   chmod +x run_viewer.sh
+   ```
+   サービスファイルを作成
+   ```bash
+   sudo nano /etc/systemd/system/nook-viewer.service
+   ```
+   ```ini
+   [Unit]
+   Description=Nook Viewer Service
+   After=network.target
+
+   [Service]
+   ExecStart=/home/yourname/nook/run_viewer.sh
+   WorkingDirectory=/home/yourname/nook/nook/functions/viewer
+   Restart=always
+   User=yourname
+   Environment="PATH=/home/uourname/nook/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+   サービスを有効化して起動
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable nook-viewer.service
+   sudo systemctl start nook-viewer.service
+   ```
+   サービスの状態を確認
+   ```bash
+   sudo systemctl status nook-viewer.service
+   ```
+   Active: active (running) が表示されれば成功。
+   
+   ブラウザでhttp://localhost:8080 にアクセスし、表示を確認。
+
+↓以下、オリジナルのREADMEです。
+
 ## 🌟 概要
 
 Nookは、テック系の最新情報を自動的に収集し、要約するWebアプリです。
