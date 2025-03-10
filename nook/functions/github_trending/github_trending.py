@@ -103,7 +103,7 @@ class GithubTrending:
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    pprint(event)
+    pprint.pprint(event)
 
     try:
         if event.get("source") == "aws.events":
@@ -112,6 +112,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         return {"statusCode": 200}
     except Exception as e:
-        pprint(traceback.format_exc())
-        pprint(e)
+        pprint.pprint(traceback.format_exc())
+        pprint.pprint(e)
         return {"statusCode": 500}

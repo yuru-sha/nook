@@ -13,7 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-from ..common.python.gemini_client import create_client
+from nook.functions.common.python.gemini_client import create_client
 
 
 class Config:
@@ -337,7 +337,7 @@ class PaperSummarizer:
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    pprint(event)
+    pprint.pprint(event)
 
     try:
         if event.get("source") == "aws.events":
@@ -345,6 +345,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             paper_summarizer_()
         return {"statusCode": 200}
     except Exception as e:
-        pprint(traceback.format_exc())
-        pprint(e)
+        pprint.pprint(traceback.format_exc())
+        pprint.pprint(e)
         return {"statusCode": 500}

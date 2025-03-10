@@ -73,7 +73,7 @@ class GeminiClient:
             lambda e: isinstance(e, ClientError)
         ),  # ClientErrorを条件に
         before_sleep=lambda retry_state: logger.info(
-            f"Retrying due to {retry_state.outcome.exception()}..."
+            f"Retrying due to {retry_state.outcome.exception() if retry_state.outcome else 'unknown error'}..."
         ),
     )
     def generate_content(

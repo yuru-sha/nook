@@ -128,7 +128,7 @@ def fetch_markdown(app_name: str, date_str: str) -> str:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, date: str = None):
+async def index(request: Request, date: str | None = None):
     if date is None:
         date = datetime.date.today().strftime("%Y-%m-%d")
     contents = {name: fetch_markdown(name, date) for name in app_names}
@@ -183,16 +183,18 @@ async def chat(topic_id: str, request: Request):
     markdown = data.get("markdown")
     chat_history = data.get("chat_history", "なし")
     links = extract_links(markdown) + extract_links(message)
-    additional_context = []
+    additional_context_list = []
     for url in links:
         if content := fetch_url_content(url):
-            additional_context.append(f"- Content from {url}:\n\n'''{content}'''\n\n")
+            additional_context_list.append(
+                f"- Content from {url}:\n\n'''{content}'''\n\n"
+            )
     additional_context = (
         (
             "\n\n[記事またはユーザーからの質問に含まれるリンクの内容](うまく取得できていない可能性があります)\n\n"
-            + "\n\n".join(additional_context)
+            + "\n\n".join(additional_context_list)
         )
-        if additional_context
+        if additional_context_list
         else ""
     )
     formatted_message = _MESSAGE.format(

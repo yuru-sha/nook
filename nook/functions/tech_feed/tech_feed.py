@@ -12,7 +12,7 @@ import requests
 import tomllib
 from bs4 import BeautifulSoup
 
-from ..common.python.gemini_client import create_client
+from nook.functions.common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
 # {title}
@@ -44,7 +44,7 @@ class Article:
     text: str
     soup: BeautifulSoup
     category: str | None = field(default=None)
-    summary: list[str] = field(init=False)
+    summary: str = field(init=False)
 
 
 class TechFeed:
@@ -105,7 +105,7 @@ class TechFeed:
 
     def _retrieve_article(self, entry: dict[str, Any], feed_name: str) -> Article:
         try:
-            response = requests.get(entry.link)
+            response = requests.get(entry["link"])
             soup = BeautifulSoup(response.text, "html.parser")
             text = "\n".join(
                 [
@@ -117,8 +117,8 @@ class TechFeed:
             )
             return Article(
                 feed_name=feed_name,
-                title=entry.title,
-                url=entry.link,
+                title=entry["title"],
+                url=entry["link"],
                 text=text,
                 soup=soup,
             )

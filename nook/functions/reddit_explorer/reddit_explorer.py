@@ -8,7 +8,7 @@ from typing import Any, Literal
 import praw
 import tomllib
 
-from ..common.python.gemini_client import create_client
+from nook.functions.common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
 # {title}
@@ -86,7 +86,7 @@ class RedditExplorer:
         print(f"Saved summaries to {file_path}")
 
     def _retrieve_hot_posts(
-        self, subreddit: str, limit: int = None
+        self, subreddit: str, limit: int | None = None
     ) -> list[RedditPost]:
         if limit is None:
             limit = Config.reddit_top_posts_limit
@@ -123,7 +123,7 @@ class RedditExplorer:
     def _retrieve_top_comments_of_post(
         self,
         post_id: str,
-        limit: int = None,
+        limit: int | None = None,
     ) -> list[dict[str, str | int]]:
         if limit is None:
             limit = Config.reddit_top_comments_limit
