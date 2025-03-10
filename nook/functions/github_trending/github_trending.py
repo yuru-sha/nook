@@ -1,4 +1,6 @@
 import os
+import pprint
+import traceback
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -17,6 +19,7 @@ _MARKDOWN_FORMAT = """
 {description}
 """
 
+
 class Config:
     url_format = "https://github.com/trending/{language}?since=daily"
     summary_index_s3_key_format = "github_trending/{date}.md"
@@ -28,12 +31,14 @@ class Config:
             languages_data = tomllib.load(f)
         return [language["name"] for language in languages_data.get("languages", [])]
 
+
 @dataclass
 class Repository:
     name: str
     description: str | None
     link: str
     stars: int
+
 
 class GithubTrending:
     def __init__(self):
@@ -45,7 +50,10 @@ class GithubTrending:
             new_repositories = self._retrieve_repositories(
                 Config.url_format.format(language=language)
             )
-            markdowns += [self._stylize_repository_info(repository) for repository in new_repositories]
+            markdowns += [
+                self._stylize_repository_info(repository)
+                for repository in new_repositories
+            ]
         self._store_summaries(markdowns)
 
     def _retrieve_repositories(self, url: str) -> list[Repository]:
@@ -65,7 +73,12 @@ class GithubTrending:
                 .replace(",", "")
             )
             repositories.append(
-                Repository(name=name, link=f"https://github.com/{name}", description=description, stars=stars)
+                Repository(
+                    name=name,
+                    link=f"https://github.com/{name}",
+                    description=description,
+                    stars=stars,
+                )
             )
         return repositories
 

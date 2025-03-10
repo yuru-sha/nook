@@ -1,5 +1,0 @@
-httpx
-requests
-beautifulsoup4
-tqdm
-arxiv

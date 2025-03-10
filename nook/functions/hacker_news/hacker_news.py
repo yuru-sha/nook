@@ -1,11 +1,14 @@
 import inspect
 import os
+import pprint
+import traceback
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
+
 from ..common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
@@ -16,11 +19,15 @@ _MARKDOWN_FORMAT = """
 {url_or_text}
 """
 
+
 class Config:
-    hacker_news_top_stories_url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+    hacker_news_top_stories_url = (
+        "https://hacker-news.firebaseio.com/v0/topstories.json"
+    )
     hacker_news_item_url = "https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
     hacker_news_num_top_stories = 30
     summary_index_s3_key_format = "hacker_news/{date}.md"
+
 
 @dataclass
 class Story:
@@ -28,6 +35,7 @@ class Story:
     score: int
     url: str | None = None
     text: str | None = None
+
 
 class HackerNewsRetriever:
     def __init__(self):
@@ -39,7 +47,7 @@ class HackerNewsRetriever:
         self._store_summaries(styled_attachments)
 
     def _get_top_stories(self) -> list[Story]:
-        top_stories = self._get_top_storie_ids()[:Config.hacker_news_num_top_stories]
+        top_stories = self._get_top_storie_ids()[: Config.hacker_news_num_top_stories]
         stories = []
         for story_id in top_stories:
             story = self._get_story(story_id)

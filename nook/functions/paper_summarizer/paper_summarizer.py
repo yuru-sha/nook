@@ -1,22 +1,27 @@
 import concurrent.futures
 import inspect
 import os
+import pprint
 import re
+import traceback
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
-from tqdm import tqdm
 
 import arxiv
 import requests
 from bs4 import BeautifulSoup
+from tqdm import tqdm
+
 from ..common.python.gemini_client import create_client
+
 
 class Config:
     hugging_face_api_url_format = "https://huggingface.co/papers?date={date}"
     arxiv_id_regex = r"\d{4}\.\d{5}"
     arxiv_ids_s3_key_format = "paper_summarizer/arxiv_ids-{date}.txt"
     summary_index_s3_key_format = "paper_summarizer/{date}.md"
+
 
 def remove_tex_backticks(text: str) -> str:
     r"""
@@ -68,6 +73,7 @@ def remove_outer_singlequotes(text: str) -> str:
     pattern = r"'''(.*)'''"
     return re.sub(pattern, lambda m: m.group(1), text, flags=re.DOTALL)
 
+
 @dataclass
 class PaperInfo:
     title: str
@@ -75,6 +81,7 @@ class PaperInfo:
     url: str
     contents: str
     summary: str = field(init=False)
+
 
 class PaperIdRetriever:
     def retrieve_from_hugging_face(self) -> list[str]:
@@ -95,6 +102,7 @@ class PaperIdRetriever:
         except requests.exceptions.RequestException as e:
             print(f"Error when retrieving papers from Hugging Face: {e}")
         return list(set(arxiv_ids))
+
 
 class PaperSummarizer:
     def __init__(self):
@@ -181,10 +189,10 @@ class PaperSummarizer:
                 output_dir,
                 Config.arxiv_ids_s3_key_format.format(
                     date=(date.today() - timedelta(days=i)).strftime("%Y-%m-%d")
-                )
+                ),
             )
             try:
-                with open(last_n_arxiv_ids_path, "r", encoding="utf-8") as f:
+                with open(last_n_arxiv_ids_path, encoding="utf-8") as f:
                     arxiv_ids.extend(f.read().splitlines())
             except FileNotFoundError:
                 print(f"No previous IDs found at {last_n_arxiv_ids_path}")

@@ -4,18 +4,19 @@ Gemini API Client for Lambda functions.
 This module provides a common interface for interacting with the Gemini API.
 """
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any
 
 from google import genai
 from google.genai import types
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 from google.genai.errors import ClientError
-import logging
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class GeminiClientConfig:
@@ -68,8 +69,12 @@ class GeminiClient:
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=60),
-        retry=retry_if_exception(lambda e: isinstance(e, ClientError)),  # ClientErrorを条件に
-        before_sleep=lambda retry_state: logger.info(f"Retrying due to {retry_state.outcome.exception()}...")
+        retry=retry_if_exception(
+            lambda e: isinstance(e, ClientError)
+        ),  # ClientErrorを条件に
+        before_sleep=lambda retry_state: logger.info(
+            f"Retrying due to {retry_state.outcome.exception()}..."
+        ),
     )
     def generate_content(
         self,
