@@ -1,14 +1,29 @@
 [[feeds]]
-key = "google_research_blog"
-name = "Google Research Blog"
-url = "https://research.google/blog/rss/"
+key = "nikon_imaging"
+name = "Nikon Imaging"
+url = "https://www.nikon-image.com/news/rss/index.rdf"
 
 [[feeds]]
-key = "deepmind_blog"
-name = "DeepMind Blog"
-url = "https://deepmind.google/blog/rss.xml"
+key = "nikon_rumors"
+name = "Nikon Rumors"
+url = "https://nikonrumors.com/feed/"
 
 [[feeds]]
-key = "openai_news"
-name = "OpenAI News"
-url = "https://openai.com/news/rss.xml"
+key = "torunara"
+name = "とるなら"
+url = "https://asobinet.com/feed/"
+
+[[feeds]]
+key = "digicame_info"
+name = "デジカメinfo"
+url = "https://digicame-info.com/atom.xml"
+
+[[feeds]]
+key = "dc_watch_impress"
+name = "デジカメ Watch"
+url = "https://dc.watch.impress.co.jp/data/rss/1.0/dcw/feed.rdf"
+
+[[feeds]]
+key = "cameota"
+name = "CAMEOTA.com"
+url = "https://cameota.com/feed"

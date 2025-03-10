@@ -25,9 +25,9 @@ templates = Jinja2Templates(
 )
 
 app_names = [
-    "github_trending",
-    "hacker_news",
-    "paper_summarizer",
+    # "github_trending",
+    # "hacker_news",
+    # "paper_summarizer",
     "reddit_explorer",
     "tech_feed",
 ]

@@ -21,10 +21,10 @@ def run_all():
 
     # 各情報源の処理を実行
     handlers = [
-        PaperSummarizer(),
-        HackerNewsRetriever(),
+        # PaperSummarizer(),
+        # HackerNewsRetriever(),
         RedditExplorer(),
-        GithubTrending(),
+        # GithubTrending(),
         TechFeed(),
     ]
 
