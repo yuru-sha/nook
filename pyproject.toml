@@ -72,4 +72,12 @@ ignore = [
     "C408",
     "PERF203",
     "PERF401",
+    "E501",
 ]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "arxiv.*"
+ignore_missing_imports = true

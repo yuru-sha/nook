@@ -1,12 +1,15 @@
 import inspect
 import os
+import pprint
+import traceback
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
-from ..common.python.gemini_client import create_client
+
+from nook.functions.common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
 # {title}
@@ -16,11 +19,15 @@ _MARKDOWN_FORMAT = """
 {url_or_text}
 """
 
+
 class Config:
-    hacker_news_top_stories_url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+    hacker_news_top_stories_url = (
+        "https://hacker-news.firebaseio.com/v0/topstories.json"
+    )
     hacker_news_item_url = "https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
     hacker_news_num_top_stories = 30
     summary_index_s3_key_format = "hacker_news/{date}.md"
+
 
 @dataclass
 class Story:
@@ -28,6 +35,7 @@ class Story:
     score: int
     url: str | None = None
     text: str | None = None
+
 
 class HackerNewsRetriever:
     def __init__(self):
@@ -39,11 +47,11 @@ class HackerNewsRetriever:
         self._store_summaries(styled_attachments)
 
     def _get_top_stories(self) -> list[Story]:
-        top_stories = self._get_top_storie_ids()[:Config.hacker_news_num_top_stories]
+        top_stories = self._get_top_storie_ids()[: Config.hacker_news_num_top_stories]
         stories = []
         for story_id in top_stories:
             story = self._get_story(story_id)
-            if story["score"] < 20:
+            if int(story["score"]) < 20:
                 continue
             summary = None
             if story.get("text"):
@@ -54,17 +62,17 @@ class HackerNewsRetriever:
             stories.append(
                 Story(
                     title=story["title"],
-                    score=story["score"],
+                    score=int(story["score"]),
                     url=story.get("url"),
                     text=story.get("text") if summary is None else summary,
                 )
             )
         return stories
 
-    def _summarize_story(self, story: dict[str, str | int]) -> str:
+    def _summarize_story(self, story: dict[str, Any]) -> str:
         return self._client.generate_content(
             contents=self._contents_format.format(
-                title=story["title"], text=self._cleanse_text(story["text"])
+                title=story["title"], text=self._cleanse_text(str(story["text"]))
             ),
             system_instruction=self._system_instruction,
         )
@@ -75,7 +83,7 @@ class HackerNewsRetriever:
             headers={"Content-Type": "application/json"},
         ).json()
 
-    def _get_story(self, story_id: int) -> dict[str, str]:
+    def _get_story(self, story_id: int) -> dict[str, Any]:
         return requests.get(
             Config.hacker_news_item_url.format(story_id=story_id),
             headers={"Content-Type": "application/json"},
@@ -131,7 +139,7 @@ class HackerNewsRetriever:
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    pprint(event)
+    pprint.pprint(event)
 
     try:
         # if the lambda is invoked by a cron job,
@@ -142,6 +150,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         return {"statusCode": 200}
     except Exception as e:
-        pprint(traceback.format_exc())
-        pprint(e)
+        pprint.pprint(traceback.format_exc())
+        pprint.pprint(e)
         return {"statusCode": 500}

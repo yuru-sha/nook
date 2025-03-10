@@ -1,12 +1,14 @@
 import inspect
 import os
+import traceback
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
 
 import praw
 import tomllib
-from ..common.python.gemini_client import create_client
+
+from nook.functions.common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
 # {title}
@@ -20,6 +22,7 @@ _MARKDOWN_FORMAT = """
 {summary}
 """
 
+
 class Config:
     reddit_top_posts_limit = 10
     reddit_top_comments_limit = 3
@@ -27,10 +30,15 @@ class Config:
 
     @classmethod
     def load_subreddits(cls) -> list[str]:
-        subreddits_toml_path = os.path.join(os.path.dirname(__file__), "subreddits.toml")
+        subreddits_toml_path = os.path.join(
+            os.path.dirname(__file__), "subreddits.toml"
+        )
         with open(subreddits_toml_path, "rb") as f:
             subreddits_data = tomllib.load(f)
-        return [subreddit["name"] for subreddit in subreddits_data.get("subreddits", [])]
+        return [
+            subreddit["name"] for subreddit in subreddits_data.get("subreddits", [])
+        ]
+
 
 @dataclass
 class RedditPost:
@@ -44,6 +52,7 @@ class RedditPost:
     comments: list[dict[str, str | int]] = field(init=False)
     summary: str = field(init=False)
     thumbnail: str = "self"
+
 
 class RedditExplorer:
     def __init__(self):
@@ -77,7 +86,7 @@ class RedditExplorer:
         print(f"Saved summaries to {file_path}")
 
     def _retrieve_hot_posts(
-        self, subreddit: str, limit: int = None
+        self, subreddit: str, limit: int | None = None
     ) -> list[RedditPost]:
         if limit is None:
             limit = Config.reddit_top_posts_limit
@@ -114,7 +123,7 @@ class RedditExplorer:
     def _retrieve_top_comments_of_post(
         self,
         post_id: str,
-        limit: int = None,
+        limit: int | None = None,
     ) -> list[dict[str, str | int]]:
         if limit is None:
             limit = Config.reddit_top_comments_limit

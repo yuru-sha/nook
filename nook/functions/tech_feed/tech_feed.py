@@ -11,7 +11,8 @@ import feedparser
 import requests
 import tomllib
 from bs4 import BeautifulSoup
-from ..common.python.gemini_client import create_client
+
+from nook.functions.common.python.gemini_client import create_client
 
 _MARKDOWN_FORMAT = """
 # {title}
@@ -20,6 +21,7 @@ _MARKDOWN_FORMAT = """
 
 {summary}
 """
+
 
 class Config:
     tech_feed_max_entries_per_day = 10
@@ -33,6 +35,7 @@ class Config:
             feed_data = tomllib.load(f)
         return {feed["name"]: feed["url"] for feed in feed_data.get("feeds", [])}
 
+
 @dataclass
 class Article:
     feed_name: str
@@ -41,7 +44,8 @@ class Article:
     text: str
     soup: BeautifulSoup
     category: str | None = field(default=None)
-    summary: list[str] = field(init=False)
+    summary: str = field(init=False)
+
 
 class TechFeed:
     def __init__(self) -> None:
@@ -58,7 +62,7 @@ class TechFeed:
             entries = self._filter_entries(feed_parser)
             print(f"Filtered entries count: {len(entries)}")
             if len(entries) > Config.tech_feed_max_entries_per_day:
-                entries = entries[:Config.tech_feed_max_entries_per_day]
+                entries = entries[: Config.tech_feed_max_entries_per_day]
             for entry in entries:
                 try:
                     article = self._retrieve_article(entry, feed_name=feed_name)
@@ -67,14 +71,18 @@ class TechFeed:
                     print(f"Summarized article: {article.title}")
                     markdowns.append(self._stylize_article(article))
                 except Exception as e:
-                    print(f"Error processing article {entry.get('link', 'unknown')}: {e}")
+                    print(
+                        f"Error processing article {entry.get('link', 'unknown')}: {e}"
+                    )
                     traceback.print_exc()
                     continue
             time.sleep(2)  # APIリクエストの制限を避ける
         print(f"Total markdowns generated: {len(markdowns)}")
         self._store_summaries(markdowns)
 
-    def _filter_entries(self, feed_parser: feedparser.FeedParserDict) -> list[dict[str, Any]]:
+    def _filter_entries(
+        self, feed_parser: feedparser.FeedParserDict
+    ) -> list[dict[str, Any]]:
         filtered_entries = []
         for entry in feed_parser["entries"]:
             date_ = entry.get("date_parsed") or entry.get("published_parsed")
@@ -86,7 +94,9 @@ class TechFeed:
                 if published_dt > self._threshold:
                     filtered_entries.append(entry)
                 else:
-                    print(f"Entry too old: {entry.get('title', 'unknown')} ({published_dt})")
+                    print(
+                        f"Entry too old: {entry.get('title', 'unknown')} ({published_dt})"
+                    )
             except Exception as e:
                 print(f"Error converting date for {entry.get('link', 'unknown')}: {e}")
                 traceback.print_exc()
@@ -95,15 +105,20 @@ class TechFeed:
 
     def _retrieve_article(self, entry: dict[str, Any], feed_name: str) -> Article:
         try:
-            response = requests.get(entry.link)
+            response = requests.get(entry["link"])
             soup = BeautifulSoup(response.text, "html.parser")
             text = "\n".join(
-                [p.get_text() for p in soup.find_all(["p", "code", "ul", "h1", "h2", "h3", "h4", "h5", "h6"])]
+                [
+                    p.get_text()
+                    for p in soup.find_all(
+                        ["p", "code", "ul", "h1", "h2", "h3", "h4", "h5", "h6"]
+                    )
+                ]
             )
             return Article(
                 feed_name=feed_name,
-                title=entry.title,
-                url=entry.link,
+                title=entry["title"],
+                url=entry["link"],
                 text=text,
                 soup=soup,
             )
@@ -131,7 +146,9 @@ class TechFeed:
 
     def _summarize_article(self, article: Article) -> str:
         return self._client.generate_content(
-            contents=self._contents_format.format(title=article.title, text=article.text),
+            contents=self._contents_format.format(
+                title=article.title, text=article.text
+            ),
             system_instruction=self._system_instruction,
         )
 
@@ -155,6 +172,7 @@ class TechFeed:
             {text}
             """
         )
+
 
 if __name__ == "__main__":
     # テスト用コード
