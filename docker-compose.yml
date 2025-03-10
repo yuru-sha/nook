@@ -1,0 +1,33 @@
+services:
+  viewer:
+    build:
+      context: .
+      dockerfile: docker/viewer/Dockerfile
+    container_name: nook-viewer
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./output:/app/output
+    restart: unless-stopped
+    networks:
+      - nook
+
+  collector:
+    build:
+      context: .
+      dockerfile: docker/collector/Dockerfile
+    container_name: nook-collector
+    env_file:
+      - .env
+    volumes:
+      - ./output:/app/output
+    restart: unless-stopped
+    networks:
+      - nook
+
+networks:
+  nook:
+    name: nook
+    driver: bridge

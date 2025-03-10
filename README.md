@@ -12,6 +12,39 @@
   <img src="assets/screenshots/nook-demo.gif" alt="Nook Demo" width="700">
 </p>
 
+## Docker版概要
+
+これは海行（うみゆき）さんのフォーク版をローカルのDockerで動かせるようにしたものです。
+
+## Docker版導入方法
+
+1. **リポジトリをクローン**
+   ```bash
+   git clone https://github.com/yuru-sha/nook.git
+   cd nook
+   ```
+
+2. **環境変数の設定**
+   `.env.example`をコピーしてご利用ください。
+   各種APIキーの取得先を載せています。
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   `OUTPUT_DIR`はお好みで変更してください。
+   デフォルトはプロジェクトルート直下に`output`ディレクトリを作成し収集したデータを格納します。
+
+3. **Docker版の起動**
+   Dockerデーモンが起動していれば下記コマンドでDockerイメージのビルドと起動が出来ます。
+
+   ```bash
+   make docker-all
+   make docker-run
+   ```
+
+↓以下、フォーク版とオリジナルのREADMEです。
+
 ## フォーク版概要
 
 これは[@IMG_5955](https://x.com/IMG_5955)さんが開発したNookからAWS依存部分を無くしてローカルで動かせるようにしたものです。自宅サーバでの運用を想定してます。
@@ -57,9 +90,9 @@
    サーバ起動した状態でブラウザからhttp://localhost:8080 にアクセスすると閲覧できます。
 
 6. **データ収集をcronで定期実行**
-   
+
    run_nook.sh内のPROJECT_DIRを自分の環境に合わせて編集する
-   
+
    run_nook.shに実行権限を付与
    ```bash
    chmod +x run_nook.sh
@@ -74,9 +107,9 @@
    ```
 
 8. **ビューワのサーバを永続化**
-   
+
    run_viewer.sh内のPROJECT_DIRを自分の環境に合わせて編集する
-   
+
    run_viewer.shに実行権限を付与
    ```bash
    chmod +x run_viewer.sh
@@ -111,7 +144,7 @@
    sudo systemctl status nook-viewer.service
    ```
    Active: active (running) が表示されれば成功。
-   
+
    ブラウザでhttp://localhost:8080 にアクセスし、表示を確認。
 
 ↓以下、オリジナルのREADMEです。

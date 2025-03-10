@@ -1,0 +1,6 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PYTHONPATH=/app
+
+# データ収集（毎日0時）
+0 0 * * * cd /app && python main.py >> /var/log/cron.log 2>&1
