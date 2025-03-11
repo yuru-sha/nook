@@ -1,5 +1,5 @@
 services:
-  viewer:
+  nook-viewer:
     build:
       context: .
       dockerfile: docker/viewer/Dockerfile
@@ -9,12 +9,13 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./output:/app/output
+      - ./output/default:/app/output/default
+      - ./output/camera:/app/output/camera
     restart: unless-stopped
     networks:
       - nook
 
-  collector:
+  nook-collector:
     build:
       context: .
       dockerfile: docker/collector/Dockerfile
@@ -22,7 +23,24 @@ services:
     env_file:
       - .env
     volumes:
-      - ./output:/app/output
+      - ./output/default:/app/output
+    environment:
+      - NOOK_TYPE=default
+    restart: unless-stopped
+    networks:
+      - nook
+
+  nook-camera-collector:
+    build:
+      context: .
+      dockerfile: docker/collector/Dockerfile
+    container_name: nook-camera-collector
+    env_file:
+      - .env
+    volumes:
+      - ./output/camera:/app/output
+    environment:
+      - NOOK_TYPE=camera
     restart: unless-stopped
     networks:
       - nook

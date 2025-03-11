@@ -1,19 +1,14 @@
 # nook/functions/viewer/viewer.py
-import datetime
 import os
 import re
-import sys
+from datetime import datetime
+from enum import Enum
 
-from dotenv import load_dotenv
-
-# プロジェクトルートをモジュール検索パスに追加
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-)
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from nook.functions.common.python.gemini_client import create_client
@@ -24,13 +19,62 @@ templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "templates")
 )
 
-app_names = [
-    "github_trending",
-    "hacker_news",
-    "paper_summarizer",
-    "reddit_explorer",
-    "tech_feed",
-]
+# NOOK_TYPEに基づいてアプリ名とタイトルを設定
+NOOK_TYPE = os.environ.get("NOOK_TYPE", "default")
+
+
+class NookType(str, Enum):
+    """Nookのタイプを定義するEnum"""
+
+    DEFAULT = "default"
+    CAMERA = "camera"
+
+
+def get_app_names(nook_type: NookType) -> list[str]:
+    """
+    指定されたNookタイプに応じたアプリ名のリストを返す。
+
+    Parameters
+    ----------
+    nook_type : NookType
+        Nookのタイプ
+
+    Returns
+    -------
+    list[str]
+        アプリ名のリスト
+    """
+    if nook_type == NookType.CAMERA:
+        return [
+            "reddit_explorer",
+            "tech_feed",
+        ]
+    else:
+        return [
+            "github_trending",
+            "hacker_news",
+            "paper_summarizer",
+            "reddit_explorer",
+            "tech_feed",
+        ]
+
+
+def get_app_title(nook_type: NookType) -> str:
+    """
+    指定されたNookタイプに応じたアプリタイトルを返す。
+
+    Parameters
+    ----------
+    nook_type : NookType
+        Nookのタイプ
+
+    Returns
+    -------
+    str
+        アプリタイトル
+    """
+    return "Nook Camera" if nook_type == NookType.CAMERA else "Nook"
+
 
 WEATHER_ICONS = {
     "100": "☀️",
@@ -113,9 +157,28 @@ def fetch_url_content(url: str) -> str | None:
         return None
 
 
-def fetch_markdown(app_name: str, date_str: str) -> str:
+def fetch_markdown(
+    app_name: str, date_str: str, nook_type: NookType = NookType.DEFAULT
+) -> str:
+    """
+    指定されたアプリ名と日付のマークダウンファイルを取得する。
+
+    Parameters
+    ----------
+    app_name : str
+        アプリ名
+    date_str : str
+        日付文字列（YYYY-MM-DD形式）
+    nook_type : NookType
+        Nookのタイプ（デフォルトはDEFAULT）
+
+    Returns
+    -------
+    str
+        マークダウンの内容
+    """
     output_dir = os.environ.get("OUTPUT_DIR", "./output")
-    key = f"{app_name}/{date_str}.md"
+    key = f"{nook_type.value}/{app_name}/{date_str}.md"
     file_path = os.path.join(output_dir, key)
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -127,20 +190,66 @@ def fetch_markdown(app_name: str, date_str: str) -> str:
         return f"Error fetching {key}: {e}"
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request, date: str | None = None):
-    if date is None:
-        date = datetime.date.today().strftime("%Y-%m-%d")
-    contents = {name: fetch_markdown(name, date) for name in app_names}
+@app.get("/")
+async def root():
+    """ルートパスへのアクセスをデフォルトタイプにリダイレクト"""
+    return RedirectResponse(url="/default")
+
+
+@app.get("/{nook_type}", response_class=HTMLResponse)
+async def index(request: Request, nook_type: str):
+    """
+    指定されたタイプのNookのインデックスページを表示。
+
+    Parameters
+    ----------
+    request : Request
+        リクエストオブジェクト
+    nook_type : str
+        Nookのタイプ（"default" または "camera"）
+
+    Returns
+    -------
+    HTMLResponse
+        インデックスページのHTML
+    """
+    try:
+        nook_type_enum = NookType(nook_type.lower())
+    except ValueError:
+        return RedirectResponse(url="/default")
+
+    app_names = get_app_names(nook_type_enum)
+    app_title = get_app_title(nook_type_enum)
     weather_data = get_weather_data()
+
+    # クエリパラメータから日付を取得、なければ今日の日付を使用
+    date_str = request.query_params.get("date", datetime.now().strftime("%Y-%m-%d"))
+
+    # 各アプリのマークダウンコンテンツを取得
+    contents = {}
+    for app_name in app_names:
+        contents[app_name] = fetch_markdown(app_name, date_str, nook_type_enum)
+
+    # タブ名を設定
+    tab_names = {
+        "github_trending": "GitHub Trending",
+        "hacker_news": "Hacker News",
+        "paper_summarizer": "Paper Summarizer",
+        "reddit_explorer": "Reddit Explorer",
+        "tech_feed": "Tech Feed",
+    }
+
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
-            "contents": contents,
-            "date": date,
             "app_names": app_names,
+            "app_title": app_title,
+            "nook_type": nook_type_enum.value,
             "weather_data": weather_data,
+            "contents": contents,
+            "tab_names": tab_names,
+            "date": date_str,  # テンプレートに日付を渡す
         },
     )
 
@@ -178,6 +287,21 @@ _MESSAGE = """
 
 @app.post("/chat/{topic_id}")
 async def chat(topic_id: str, request: Request):
+    """
+    チャットエンドポイント。
+
+    Parameters
+    ----------
+    topic_id : str
+        トピックID
+    request : Request
+        リクエストオブジェクト
+
+    Returns
+    -------
+    dict
+        レスポンス
+    """
     data = await request.json()
     message = data.get("message")
     markdown = data.get("markdown")

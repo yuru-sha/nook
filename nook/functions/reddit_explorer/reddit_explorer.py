@@ -30,9 +30,14 @@ class Config:
 
     @classmethod
     def load_subreddits(cls) -> list[str]:
-        subreddits_toml_path = os.path.join(
-            os.path.dirname(__file__), "subreddits.toml"
-        )
+        nook_type = os.environ.get("NOOK_TYPE", "default")
+
+        if nook_type == "camera":
+            config_file = "subreddits_camera.toml"
+        else:
+            config_file = "subreddits_default.toml"
+
+        subreddits_toml_path = os.path.join(os.path.dirname(__file__), config_file)
         with open(subreddits_toml_path, "rb") as f:
             subreddits_data = tomllib.load(f)
         return [
@@ -98,6 +103,8 @@ class RedditExplorer:
             url = self._get_video_url(post) if post_type == "video" else post.url
 
             # filter out undesired posts
+            if post.author is None:
+                continue
             if post.author.name == "AutoModerator":
                 continue
             if "megathread" in post.title.lower():

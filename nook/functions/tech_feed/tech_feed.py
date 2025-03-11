@@ -30,7 +30,15 @@ class Config:
 
     @classmethod
     def load_feeds(cls) -> dict[str, str]:
-        feed_toml_path = os.path.join(os.path.dirname(__file__), "feed.toml")
+        # 環境変数NOOK_TYPEに基づいて設定ファイルを選択
+        nook_type = os.environ.get("NOOK_TYPE", "default")
+
+        if nook_type == "camera":
+            config_file = "feed_camera.toml"
+        else:
+            config_file = "feed_default.toml"
+
+        feed_toml_path = os.path.join(os.path.dirname(__file__), config_file)
         with open(feed_toml_path, "rb") as f:
             feed_data = tomllib.load(f)
         return {feed["name"]: feed["url"] for feed in feed_data.get("feeds", [])}
