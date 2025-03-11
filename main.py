@@ -19,14 +19,24 @@ def run_all():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.environ["OUTPUT_DIR"] = OUTPUT_DIR
 
-    # 各情報源の処理を実行
-    handlers = [
-        # PaperSummarizer(),
-        # HackerNewsRetriever(),
-        RedditExplorer(),
-        # GithubTrending(),
-        TechFeed(),
-    ]
+    # NOOK_TYPEに基づいて処理を分岐
+    NOOK_TYPE = os.environ.get("NOOK_TYPE", "default")
+
+    if NOOK_TYPE == "camera":
+        print("Running Nook Camera collectors...")
+        handlers = [
+            RedditExplorer(),
+            TechFeed(),
+        ]
+    else:
+        print("Running Nook collectors...")
+        handlers = [
+            PaperSummarizer(),
+            HackerNewsRetriever(),
+            RedditExplorer(),
+            GithubTrending(),
+            TechFeed(),
+        ]
 
     for handler in handlers:
         print(f"Running {handler.__class__.__name__}...")

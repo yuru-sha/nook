@@ -6,8 +6,10 @@ This module provides a common interface for interacting with the Gemini API.
 
 import logging
 import os
+import time
 from dataclasses import dataclass
-from typing import Any
+from threading import Lock
+from typing import Any, ClassVar
 
 from google import genai
 from google.genai import types
@@ -16,6 +18,82 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class RateLimiter:
+    """シングルトンパターンを使用したレート制限の実装。"""
+
+    _instance: ClassVar[Any | None] = None
+    _lock: ClassVar[Lock] = Lock()
+
+    def __new__(cls) -> "RateLimiter":
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
+
+    def __init__(self):
+        """複数回の初期化を防ぐ。"""
+        if self._initialized:
+            return
+
+        with self._lock:
+            if not self._initialized:
+                # 1分あたり10リクエストの制限
+                self.capacity = 10  # 最大10トークン
+                self.refill_rate = (
+                    10 / 60
+                )  # 1分で10トークン（1秒あたり約0.167トークン）
+                self.tokens = self.capacity
+                self.last_refill_time = time.time()
+                self._initialized = True
+
+    def _refill(self) -> None:
+        """経過時間に応じてトークンを補充する。"""
+        now = time.time()
+        elapsed = now - self.last_refill_time
+        new_tokens = elapsed * self.refill_rate
+        self.tokens = min(self.capacity, self.tokens + new_tokens)
+        self.last_refill_time = now
+
+    def consume(self, tokens: int = 1, timeout: float | None = None) -> bool:
+        """
+        指定した数のトークンを消費する。
+
+        Parameters
+        ----------
+        tokens : int
+            消費するトークンの数（デフォルト: 1）
+        timeout : float | None
+            タイムアウトまでの秒数（デフォルト: None）
+
+        Returns
+        -------
+        bool
+            トークンが消費できた場合はTrue、できなかった場合はFalse
+        """
+        start_time = time.time()
+
+        while True:
+            with self._lock:
+                self._refill()
+
+                if self.tokens >= tokens:
+                    self.tokens -= tokens
+                    return True
+
+                # タイムアウトのチェック
+                if timeout is not None:
+                    if time.time() - start_time > timeout:
+                        return False
+
+                # 次のトークンが利用可能になるまでの待ち時間を計算
+                tokens_needed = tokens - self.tokens
+                wait_time = tokens_needed / self.refill_rate
+
+            # 短い時間待機してから再試行
+            time.sleep(min(1.0, wait_time))
 
 
 @dataclass
@@ -65,13 +143,28 @@ class GeminiClient:
             http_options=types.HttpOptions(timeout=self._config.timeout),
         )
         self._chat = None
+        self._rate_limiter = RateLimiter()
+
+    def _wait_for_rate_limit(self, timeout: float | None = None) -> bool:
+        """
+        レート制限に従ってトークンを消費する。
+
+        Parameters
+        ----------
+        timeout : float | None
+            タイムアウトまでの秒数（デフォルト: None）
+
+        Returns
+        -------
+        bool
+            トークンが消費できた場合はTrue、できなかった場合はFalse
+        """
+        return self._rate_limiter.consume(tokens=1, timeout=timeout)
 
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=60),
-        retry=retry_if_exception(
-            lambda e: isinstance(e, ClientError)
-        ),  # ClientErrorを条件に
+        retry=retry_if_exception(lambda e: isinstance(e, (ClientError, TimeoutError))),
         before_sleep=lambda retry_state: logger.info(
             f"Retrying due to {retry_state.outcome.exception() if retry_state.outcome else 'unknown error'}..."
         ),
@@ -119,7 +212,16 @@ class GeminiClient:
         -------
         str
             The generated content.
+
+        Raises
+        ------
+        TimeoutError
+            If unable to acquire rate limit token within timeout.
         """
+        # レート制限のチェック（30秒のタイムアウト）
+        if not self._wait_for_rate_limit(timeout=30):
+            raise TimeoutError("Rate limit timeout exceeded")
+
         if isinstance(contents, str):
             contents = [contents]
 
@@ -189,6 +291,14 @@ class GeminiClient:
             config=types.GenerateContentConfig(**config_params),
         )
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception(lambda e: isinstance(e, (ClientError, TimeoutError))),
+        before_sleep=lambda retry_state: logger.info(
+            f"Retrying due to {retry_state.outcome.exception() if retry_state.outcome else 'unknown error'}..."
+        ),
+    )
     def send_message(self, message: str) -> str:
         """
         Send a message to the chat and get the response.
@@ -207,13 +317,27 @@ class GeminiClient:
         ------
         ValueError
             If no chat has been created.
+        TimeoutError
+            If unable to acquire rate limit token within timeout.
         """
         if not self._chat:
             raise ValueError("No chat has been created. Call create_chat() first.")
 
+        # レート制限のチェック（30秒のタイムアウト）
+        if not self._wait_for_rate_limit(timeout=30):
+            raise TimeoutError("Rate limit timeout exceeded")
+
         response = self._chat.send_message(message)
         return response.text
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception(lambda e: isinstance(e, (ClientError, TimeoutError))),
+        before_sleep=lambda retry_state: logger.info(
+            f"Retrying due to {retry_state.outcome.exception() if retry_state.outcome else 'unknown error'}..."
+        ),
+    )
     def chat_with_search(self, message: str, model: str | None = None) -> str:
         """
         Create a new chat with search capability and send a message.
@@ -232,11 +356,20 @@ class GeminiClient:
         -------
         str
             The response from the chat.
+
+        Raises
+        ------
+        TimeoutError
+            If unable to acquire rate limit token within timeout.
         """
         original_use_search = self._config.use_search
         self._config.use_search = True
 
         try:
+            # レート制限のチェック（30秒のタイムアウト）
+            if not self._wait_for_rate_limit(timeout=30):
+                raise TimeoutError("Rate limit timeout exceeded")
+
             self.create_chat(model=model)
             return self.send_message(message)
         finally:

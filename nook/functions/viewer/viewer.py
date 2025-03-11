@@ -24,13 +24,25 @@ templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "templates")
 )
 
-app_names = [
-    # "github_trending",
-    # "hacker_news",
-    # "paper_summarizer",
-    "reddit_explorer",
-    "tech_feed",
-]
+# NOOK_TYPEに基づいてアプリ名とタイトルを設定
+NOOK_TYPE = os.environ.get("NOOK_TYPE", "default")
+
+if NOOK_TYPE == "camera":
+    app_names = [
+        "reddit_explorer",
+        "tech_feed",
+    ]
+else:
+    app_names = [
+        "github_trending",
+        "hacker_news",
+        "paper_summarizer",
+        "reddit_explorer",
+        "tech_feed",
+    ]
+
+# アプリタイトルを設定
+app_title = "Nook Camera" if NOOK_TYPE == "camera" else "Nook"
 
 WEATHER_ICONS = {
     "100": "☀️",
@@ -141,6 +153,7 @@ async def index(request: Request, date: str | None = None):
             "date": date,
             "app_names": app_names,
             "weather_data": weather_data,
+            "app_title": app_title,
         },
     )
 

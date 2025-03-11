@@ -1,0 +1,39 @@
+[[feeds]]
+key = "nikon_imaging"
+name = "Nikon Imaging"
+url = "https://www.nikon-image.com/news/rss/index.rdf"
+
+[[feeds]]
+key = "nikon_rumors"
+name = "Nikon Rumors"
+url = "https://nikonrumors.com/feed/"
+
+[[feeds]]
+key = "torunara"
+name = "とるなら"
+url = "https://asobinet.com/feed/"
+
+[[feeds]]
+key = "digicame_info"
+name = "デジカメinfo"
+url = "https://digicame-info.com/atom.xml"
+
+[[feeds]]
+key = "dc_watch_impress"
+name = "デジカメ Watch"
+url = "https://dc.watch.impress.co.jp/data/rss/1.0/dcw/feed.rdf"
+
+[[feeds]]
+key = "cameota"
+name = "CAMEOTA.com"
+url = "https://cameota.com/feed"
+
+[[feeds]]
+key = "dpreview"
+name = "DPReview"
+url = "https://www.dpreview.com/feeds/news.xml"
+
+[[feeds]]
+key = "petapixel"
+name = "PetaPixel"
+url = "https://petapixel.com/feed/"

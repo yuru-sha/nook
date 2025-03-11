@@ -1,2 +1,5 @@
 [[languages]]
 name = "python"
+
+[[languages]]
+name = "go"
