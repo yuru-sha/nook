@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <!-- KaTeX の CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
   <style>
     body {
       background-color: #ffffff;
@@ -636,6 +638,27 @@
       margin-top: 1.25rem !important;
       letter-spacing: -0.016em !important;
     }
+
+    /* タイプ切り替えナビゲーション用のスタイル */
+    .type-nav {
+      margin-bottom: 20px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+    }
+
+    .type-nav a {
+      margin-right: 15px;
+      padding: 5px 15px;
+      text-decoration: none;
+      color: #6c757d;
+      border-radius: 3px;
+    }
+
+    .type-nav a.active {
+      background-color: #0d6efd;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -660,9 +683,11 @@
       <div class="col-md-3">
         <div class="sidebar-sticky">
           <div class="content-container">
-            <form method="get" action="/" id="dateForm">
+            <form method="get" action="/{{ nook_type }}" id="dateForm">
               <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
+                <div class="selected-date mb-2" style="font-size: 1rem; color: #1d1d1f;">
+                </div>
                 <input type="date" class="form-control" id="date" name="date" value="{{ date }}" pattern="\d{4}-\d{2}-\d{2}" placeholder="YYYY-MM-DD">
               </div>
             </form>
@@ -677,6 +702,11 @@
       <!-- メインコンテンツ -->
       <div class="col-md-9">
         <div class="content-container">
+          <!-- タイプ切り替えナビゲーション -->
+          <div class="type-nav">
+            <a href="/default" class="{{ 'active' if nook_type == 'default' else '' }}">Default</a>
+            <a href="/camera" class="{{ 'active' if nook_type == 'camera' else '' }}">Camera</a>
+          </div>
           <ul class="nav nav-tabs" id="appTabs" role="tablist">
             {% set tab_names = {
               'github_trending': 'Trending',
