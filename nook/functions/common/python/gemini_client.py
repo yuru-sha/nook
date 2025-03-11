@@ -40,13 +40,17 @@ class RateLimiter:
 
         with self._lock:
             if not self._initialized:
-                # 1分あたり10リクエストの制限
-                self.capacity = 10  # 最大10トークン
+                # 1分間に10リクエストまでの制限（無料プラン）
+                self.capacity = 10  # 最大トークン数
                 self.refill_rate = (
                     10 / 60
                 )  # 1分で10トークン（1秒あたり約0.167トークン）
                 self.tokens = self.capacity
                 self.last_refill_time = time.time()
+                self.last_request_time = 0.0  # 最後のリクエスト時刻
+                self.min_request_interval = (
+                    6.0  # 最小リクエスト間隔（秒）- 1分間に10リクエストを確実に守るため
+                )
                 self._initialized = True
 
     def _refill(self) -> None:
@@ -79,8 +83,17 @@ class RateLimiter:
             with self._lock:
                 self._refill()
 
+                now = time.time()
+                time_since_last_request = now - self.last_request_time
+
+                # 最小リクエスト間隔を確保
+                if time_since_last_request < self.min_request_interval:
+                    time.sleep(self.min_request_interval - time_since_last_request)
+                    continue
+
                 if self.tokens >= tokens:
                     self.tokens -= tokens
+                    self.last_request_time = now
                     return True
 
                 # タイムアウトのチェック
@@ -90,10 +103,19 @@ class RateLimiter:
 
                 # 次のトークンが利用可能になるまでの待ち時間を計算
                 tokens_needed = tokens - self.tokens
-                wait_time = tokens_needed / self.refill_rate
+                wait_time = max(
+                    tokens_needed / self.refill_rate,
+                    self.min_request_interval - time_since_last_request,
+                )
 
             # 短い時間待機してから再試行
             time.sleep(min(1.0, wait_time))
+
+    def get_current_tokens(self) -> float:
+        """現在利用可能なトークン数を返す。"""
+        with self._lock:
+            self._refill()
+            return self.tokens
 
 
 @dataclass
@@ -162,11 +184,16 @@ class GeminiClient:
         return self._rate_limiter.consume(tokens=1, timeout=timeout)
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=4, max=60),
-        retry=retry_if_exception(lambda e: isinstance(e, (ClientError, TimeoutError))),
-        before_sleep=lambda retry_state: logger.info(
-            f"Retrying due to {retry_state.outcome.exception() if retry_state.outcome else 'unknown error'}..."
+        stop=stop_after_attempt(8),  # 最大8回までリトライ
+        wait=wait_exponential(multiplier=2, min=4, max=120),  # 指数バックオフを強化
+        retry=retry_if_exception(
+            lambda e: isinstance(
+                e, (ClientError, TimeoutError, ConnectionError, Exception)
+            )
+        ),
+        before_sleep=lambda retry_state: logger.warning(
+            f"Rate limit exceeded or error occurred. Retrying... "
+            f"(Attempt {retry_state.attempt_number} of 8)"
         ),
     )
     def generate_content(
@@ -217,33 +244,47 @@ class GeminiClient:
         ------
         TimeoutError
             If unable to acquire rate limit token within timeout.
+        ClientError
+            If the API request fails after all retries.
         """
-        # レート制限のチェック（30秒のタイムアウト）
-        if not self._wait_for_rate_limit(timeout=30):
-            raise TimeoutError("Rate limit timeout exceeded")
+        try:
+            # レート制限のチェック（60秒のタイムアウト）
+            if not self._wait_for_rate_limit(timeout=60):
+                raise TimeoutError("Rate limit timeout exceeded")
 
-        if isinstance(contents, str):
-            contents = [contents]
+            if isinstance(contents, str):
+                contents = [contents]
 
-        config_params = {
-            "temperature": temperature or self._config.temperature,
-            "top_p": top_p or self._config.top_p,
-            "top_k": top_k or self._config.top_k,
-            "max_output_tokens": max_output_tokens or self._config.max_output_tokens,
-            "response_mime_type": response_mime_type or self._config.response_mime_type,
-            "safety_settings": self._get_default_safety_settings(),
-        }
+            config_params = {
+                "temperature": temperature or self._config.temperature,
+                "top_p": top_p or self._config.top_p,
+                "top_k": top_k or self._config.top_k,
+                "max_output_tokens": max_output_tokens
+                or self._config.max_output_tokens,
+                "response_mime_type": response_mime_type
+                or self._config.response_mime_type,
+                "safety_settings": self._get_default_safety_settings(),
+            }
 
-        if system_instruction:
-            config_params["system_instruction"] = system_instruction
+            if system_instruction:
+                config_params["system_instruction"] = system_instruction
 
-        response = self._client.models.generate_content(
-            model=model or self._config.model,
-            contents=contents,
-            config=types.GenerateContentConfig(**config_params),
-        )
+            response = self._client.models.generate_content(
+                model=model or self._config.model,
+                contents=contents,
+                config=types.GenerateContentConfig(**config_params),
+            )
 
-        return response.candidates[0].content.parts[0].text
+            if not response.candidates:
+                raise ClientError("No response candidates received from the API")
+
+            return response.candidates[0].content.parts[0].text
+
+        except Exception as e:
+            logger.error(f"Error in generate_content: {str(e)}")
+            if isinstance(e, (ClientError, TimeoutError)):
+                raise
+            raise ClientError(f"Unexpected error: {str(e)}") from e
 
     def create_chat(
         self,

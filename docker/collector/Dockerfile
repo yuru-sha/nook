@@ -29,17 +29,19 @@ COPY . .
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
     TZ=Asia/Tokyo \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    NOOK_TYPE=default
 
 # タイムゾーンの設定
 RUN ln -fs /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 
 # cronの設定
-COPY docker/collector/crontab /etc/cron.d/collector-cron
-RUN chmod 0644 /etc/cron.d/collector-cron \
-    && crontab /etc/cron.d/collector-cron \
-    && touch /var/log/cron.log \
-    && chmod 0666 /var/log/cron.log
+COPY docker/collector/crontab.* /etc/cron.d/
+RUN chmod 0644 /etc/cron.d/crontab.* && \
+    ln -sf /etc/cron.d/crontab.${NOOK_TYPE} /etc/cron.d/collector-cron && \
+    crontab /etc/cron.d/collector-cron && \
+    touch /var/log/cron.log && \
+    chmod 0666 /var/log/cron.log
 
 # エントリーポイントスクリプトのコピーと実行権限の付与
 COPY docker/collector/entrypoint.sh /entrypoint.sh
