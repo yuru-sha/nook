@@ -12,3 +12,48 @@ url = "https://deepmind.google/blog/rss.xml"
 key = "openai_news"
 name = "OpenAI News"
 url = "https://openai.com/news/rss.xml"
+
+[[feeds]]
+key = "zenn_topics_go"
+name = "Zenn Topics Go"
+url = "https://zenn.dev/topics/go/feed"
+
+[[feeds]]
+key = "zenn_topics_go"
+name = "Zenn Topics Go"
+url = "https://zenn.dev/topics/python/feed"
+
+[[feeds]]
+key = "zenn_topics_ai"
+name = "Zenn Topics AI"
+url = "https://zenn.dev/topics/ai/feed"
+
+[[feeds]]
+key = "zenn_topics_generative_ai"
+name = "Zenn Topics 生成AI"
+url = "https://zenn.dev/topics/%E7%94%9F%E6%88%90ai/feed"
+
+[[feeds]]
+key = "zenn_topics_open_ai"
+name = "Zenn Topics OpenAI"
+url = "https://zenn.dev/topics/openai/feed"
+
+[[feeds]]
+key = "qiita_tags_go"
+name = "Qiita Tags Go"
+url = "https://qiita.com/tags/go/feed"
+
+[[feeds]]
+key = "qiita_tags_python"
+name = "Qiita Tags Python"
+url = "https://qiita.com/tags/python/feed"
+
+[[feeds]]
+key = "qiita_tags_ai"
+name = "Qiita Tags AI"
+url = "https://qiita.com/tags/ai/feed"
+
+[[feeds]]
+key = "qiita_tags_generative_ai"
+name = "Qiita Tags 生成AI"
+url = "https://qiita.com/tags/%e7%94%9f%e6%88%90ai/feed"
