@@ -1,5 +1,5 @@
 services:
-  nook-viewer:
+  viewer:
     build:
       context: .
       dockerfile: docker/viewer/Dockerfile
@@ -15,7 +15,7 @@ services:
     networks:
       - nook
 
-  nook-collector:
+  collector:
     build:
       context: .
       dockerfile: docker/collector/Dockerfile
@@ -30,7 +30,7 @@ services:
     networks:
       - nook
 
-  nook-camera-collector:
+  camera-collector:
     build:
       context: .
       dockerfile: docker/collector/Dockerfile
